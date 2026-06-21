@@ -21,6 +21,7 @@ def receive_messages():
         data = conn.recv(1024)
 
         if not data:
+            conn.close()
             break
 
         print("Client:", data.decode())
