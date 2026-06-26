@@ -1,129 +1,78 @@
 import socket
 import threading
-import time
-import urllib.request
+import sys
+import config
+import health
+import handler
 
-# =====================================================================
-# Configuration & Global State
-# =====================================================================
-
-LB_HOST = "localhost"
-LB_PORT = 3000
-BACKLOG = 10
-
+# Bind load balancer port
 loadBalancer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-loadBalancer.bind((LB_HOST, LB_PORT))
-loadBalancer.listen(BACKLOG)
-print("hey there")
+loadBalancer.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+try:
+    loadBalancer.bind((config.LB_HOST, config.LB_PORT))
+    loadBalancer.listen(config.BACKLOG)
+except Exception as e:
+    print(f"Failed to start load balancer on {config.LB_HOST}:{config.LB_PORT}: {e}")
+    sys.exit(1)
 
-servers = [
-    {"host": ("localhost", 8000), "health_url": None, "status": "up"},
-    {"host": ("localhost", 8001), "health_url": None, "status": "up"},
-    {"host": ("localhost", 8002), "health_url": None, "status": "up"}
-]
+print(f"Load balancer listening on {config.LB_HOST}:{config.LB_PORT}")
 
-count = 0
-index = 0
-quantum = 2
+# Start health checking daemon
+health.start_health_check()
 
-lock = threading.Lock()
-
-
-# =====================================================================
-# Helper Functions & Background Threads
-# =====================================================================
-
-def http_get(server):
-    """Perform an HTTP GET request to check the server's health status."""
-    try:
-        url = f"http://{server['host'][0]}:{server['host'][1]}{server['health_url']}"
-        res = urllib.request.urlopen(url, timeout=2)
-        return res.status == 200
-    except:
-        return False
-
-
-def healthChceck():
-    """Background loop to monitor health of servers via HTTP or TCP connection."""
+# Background connection acceptance thread
+def accept_connections():
     while True:
-        for server in servers:
-            if server["health_url"] is not None:
-                res = http_get(server)
-                with lock:
-                    server["status"] = "up" if res else "down"
-            else:
-                try:
-                    socket_check = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    socket_check.settimeout(2)
-                    socket_check.connect(server["host"])
-                    with lock:
-                        server["status"] = "up"
-                except:
-                    with lock:
-                        server["status"] = "down"
-                finally:
-                    socket_check.close()
-        time.sleep(2)
-
-
-# Start health check daemon thread
-threading.Thread(target=healthChceck, daemon=True).start()
-
-
-# =====================================================================
-# Connection Handling and Routing
-# =====================================================================
-
-def handleClient(client, connector, index):
-    """Forward bi-directional traffic between client and selected backend server."""
-    connector.connect(servers[index]["host"])
-    
-    def forward(source, destination):
         try:
-            while True:
-                data = source.recv(1024)
-                if not data:
-                    break
-                destination.sendall(data)
-        except OSError:
-            pass
-        finally:
-            source.close()
-            destination.close()
-    
-    # Start bidirectional forwarding threads
-    threading.Thread(target=forward, args=(client, connector), daemon=True).start()
-    threading.Thread(target=forward, args=(connector, client), daemon=True).start()
+            client, addr = loadBalancer.accept()
+            config.q.put(client)
+        except Exception as e:
+            print(f"Error accepting connection: {e}")
+            break
 
+threading.Thread(target=accept_connections, daemon=True).start()
 
-# =====================================================================
-# Main Listener Loop
-# =====================================================================
-
+# Main dispatcher loop
 while True:
-    client, addr = loadBalancer.accept()
-    connector = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
-    with lock:
-        if count < quantum and servers[index]["status"] == "up":
-            count += 1
+    try:
+        item = config.q.get()
+        if isinstance(item, tuple):
+            client, request_buffer = item
         else:
-            curr_index = index
-            index += 1
-            index %= len(servers)
+            client, request_buffer = item, []
             
-            i = 0
-            while servers[index]["status"] == "down" and i != len(servers):
-                index += 1
-                index %= len(servers)
-                i += 1
+        connector = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        
+        with config.lock:
+            if config.count < config.quantum and config.servers[config.index]["status"] == "up":
+                config.count += 1
+            else:
+                curr_index = config.index
+                config.index += 1
+                config.index %= len(config.servers)
                 
-            if curr_index != index:
-                count = 1
-                
-            if servers[index]["status"] == "down":
-                client.close()
-                continue
-    
-    t1 = threading.Thread(target=handleClient, args=(client, connector, index), daemon=True)
-    t1.start()
+                i = 0
+                while config.servers[config.index]["status"] == "down" and i != len(config.servers):
+                    config.index += 1
+                    config.index %= len(config.servers)
+                    i += 1
+                    
+                if curr_index != config.index:
+                    config.count = 1
+                    
+                if config.servers[config.index]["status"] == "down":
+                    client.close()
+                    raise RuntimeError("All backend servers are down!")
+                    
+        t1 = threading.Thread(
+            target=handler.handleClient,
+            args=(client, connector, config.index, request_buffer),
+            daemon=True
+        )
+        t1.start()
+    except RuntimeError as re:
+        print(f"Shutdown: {re}")
+        break
+    except Exception as e:
+        print(f"Unexpected error in dispatcher: {e}")
+        break
