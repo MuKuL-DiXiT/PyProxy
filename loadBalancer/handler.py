@@ -18,6 +18,7 @@ def handleClient(client, connector, index, request_buffer):
         return
         
     state = {"retry": False}
+    cleanup = {"clean":False}
     
     def forward(source, destination, stc):
         try:
@@ -43,6 +44,11 @@ def handleClient(client, connector, index, request_buffer):
             else:
                 raise
         finally:
+            with config.lock:
+                if not cleanup["clean"]:
+                    cleanup["clean"] = True
+                    config.servers[index]["connections"] -= 1
+
             with config.lock:
                 is_retry = state["retry"]
             if is_retry:

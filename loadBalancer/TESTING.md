@@ -10,8 +10,12 @@ The load balancer has been divided into the following dedicated modules:
 
 *   **[`config.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/config.py)**: Manages configuration constants, shared locks, FIFO queue, and targets pool. Added support for environment variables override (`LB_PORT`, `LB_SERVERS`, `LB_QUANTUM`, etc.).
 *   **[`health.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/health.py)**: Implements the background daemon monitoring system utilizing HTTP or raw TCP connection checks.
-*   **[`handler.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/handler.py)**: Coordinates client-server routing, bidirectional connection threads, and failover/retry management (including payload buffering and replay).
+*   **[`handler.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/handler.py)**: Coordinates client-server routing, bidirectional connection threads, failover/retry management (including payload buffering and replay), and safe connection count updates.
 *   **[`loadbalancer.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/loadbalancer.py)**: The entrypoint execution script coordinating initialization and client dispatch loops.
+*   **[`strategy.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/strategy.py)**: Implements the strategy pattern interface.
+*   **[`routing.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/routing.py)**: Abstract base class for routing algorithms.
+*   **[`round_robin.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/round_robin.py)**: Class implementing the Round-Robin routing algorithm.
+*   **[`least_connections.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/least_connections.py)**: Class implementing the Least Connections routing algorithm.
 
 ---
 
@@ -25,14 +29,15 @@ We added support for loading configurations from environment variables in `confi
 
 ### Test Scenarios
 1.  **Successful Round-Robin**: Requests are balanced sequentially according to the Quantum.
-2.  **Mid-Flight Failover Retry**:
+2.  **Least Connections**: Requests are dynamically routed to the server with the fewest active concurrent connections.
+3.  **Mid-Flight Failover Retry**:
     *   Client initiates request (`GET / HTTP/1.1\r\n\r\n`).
     *   Load balancer sends it to backend server A.
     *   Backend server A abruptly crashes/resets (sends `TCP RST`).
     *   Load balancer intercepts the error, flags backend A as `"down"`, queues the socket, and connects to backend B.
     *   Load balancer replays the buffered request data.
     *   Client receives the correct response seamlessly.
-3.  **Fatal Failover (All Servers Down)**:
+4.  **Fatal Failover (All Servers Down)**:
     *   All target servers are marked `"down"`.
     *   Load balancer closes client sockets and raises a `RuntimeError` crash rather than locking in CPU-burn loops.
 

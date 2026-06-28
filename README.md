@@ -7,9 +7,15 @@ This repository contains implementations of a TCP Proxy and a TCP Load Balancer 
 ```
 loadBalancerProject/
 ├── loadBalancer/
-│   ├── client1.py
+│   ├── config.py
+│   ├── handler.py
+│   ├── health.py
+│   ├── least_connections.py
 │   ├── loadbalancer.py
-│   └── server.py
+│   ├── round_robin.py
+│   ├── routing.py
+│   ├── server.py
+│   └── strategy.py
 └── proxy/
     ├── client.py
     ├── destination_backend.py
@@ -32,7 +38,7 @@ loadBalancerProject/
                | Load Balancer (:3000) |
                +-----------------------+
               /            |            \
-             /             |             \ (Round-Robin, Quantum = 2)
+             /             |             \ (Round-Robin or Least Connections)
             v              v              v
       +-----------+  +-----------+  +-----------+
       | Server 1  |  | Server 2  |  | Server 3  |
@@ -43,15 +49,23 @@ loadBalancerProject/
 ### Files & Logic
 
 *   **[loadbalancer.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/loadbalancer.py)**:
-    *   Binds to `localhost:3000` to receive client connections.
-    *   Maintains a pool of target backend servers: `localhost:8000`, `localhost:8001`, and `localhost:8002`.
-    *   Implements a custom Round-Robin load distribution algorithm with a capacity quantum of 2. It sends 2 consecutive connections to one server before rotating to the next.
-    *   For each accepted connection, it initiates a connection to the selected server and spawns two threads executing the `forward` helper to handle bidirectional stream relay (Client-to-Server and Server-to-Client) concurrently.
+    *   Binds to `localhost:3000` to receive client connections and routes them using the strategy pattern.
+*   **[strategy.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/strategy.py)**:
+    *   Implements the Strategy interface context wrapper for selecting routing policies.
+*   **[routing.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/routing.py)**:
+    *   Abstract base class representing a routing algorithm template.
+*   **[round_robin.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/round_robin.py)**:
+    *   Implements the Round-Robin routing policy with a configurable quantum.
+*   **[least_connections.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/least_connections.py)**:
+    *   Implements the Least Connections routing policy.
+*   **[handler.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/handler.py)**:
+    *   Manages the client-server socket forwarding loop, retries on server failures, and thread-safe connection count increments/decrements.
+*   **[config.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/config.py)**:
+    *   Central configuration module containing port definitions, shared state, locks, and backend host pools.
+*   **[health.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/health.py)**:
+    *   Runs a background health-check daemon monitoring backend target availability.
 *   **[server.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/server.py)**:
-    *   Accepts a port number via command-line arguments and binds to `localhost:<port>`.
-    *   Listens for incoming TCP connections. On acceptance, it writes its own port number back to the socket and immediately terminates the connection.
-*   **[client1.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/client1.py)**:
-    *   Placeholder/empty client configuration file.
+    *   A multi-threaded server simulating load by keeping client connections open for a short delay (e.g., 3 seconds) before writing its port and closing.
 
 ### Execution Guide
 
@@ -70,17 +84,13 @@ $ python loadBalancer/server.py 8002
 # Terminal 4: Start the Load Balancer
 $ python loadBalancer/loadbalancer.py
 
-# Terminal 5: Simulate sequential client requests using Netcat
-$ nc localhost 3000
-8000
-$ nc localhost 3000
-8000
-$ nc localhost 3000
-8001
-$ nc localhost 3000
-8001
-$ nc localhost 3000
+# Terminal 5: Test using concurrent client connections to observe Least Connections load distribution:
+$ python -c "import socket, threading, time; [threading.Thread(target=lambda: print(socket.create_connection(('localhost', 3000)).recv(1024).decode().strip())).start() for _ in range(5)]; time.sleep(1)"
 8002
+8001
+8001
+8000
+8000
 ```
 
 ---
