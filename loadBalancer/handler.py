@@ -2,11 +2,16 @@ import socket
 import threading
 import errno
 import config
+import time
 
 def handleClient(client, connector, index, request_buffer):
     """Forward bi-directional traffic between client and selected backend server."""
     try:
+        start = time.time()
         connector.connect(config.servers[index]["host"])
+        latency = round((time.time() - start) * 1000, 2)
+        with config.lock:
+            config.servers[index]['latency'] = latency
         # Replay any buffered request payload
         for data in request_buffer:
             connector.sendall(data)

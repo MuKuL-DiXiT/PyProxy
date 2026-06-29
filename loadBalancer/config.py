@@ -22,10 +22,10 @@ if servers_env:
 else:
     # Default backend server pool configuration
     servers = [
-        {"host": ("localhost", 8000), "health_url": None, "status": "up", "connections": 0},
-        {"host": ("localhost", 8001), "health_url": None, "status": "up", "connections": 0},
-        {"host": ("localhost", 8002), "health_url": None, "status": "up", "connections": 0},
-        {"host": ("localhost", 8003), "health_url": None, "status": "up", "connections": 0}
+        {"host": ("localhost", 8000), "health_url": None, "status": "up", "connections": 0, "latency":0},
+        {"host": ("localhost", 8001), "health_url": None, "status": "up", "connections": 0, "latency":0},
+        {"host": ("localhost", 8002), "health_url": None, "status": "up", "connections": 0, "latency":0},
+        {"host": ("localhost", 8003), "health_url": None, "status": "up", "connections": 0, "latency":0}
     ]
 
 # Round-robin connection quantum state

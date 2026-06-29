@@ -7,6 +7,7 @@ import health
 import handler
 from round_robin import round_robin
 from least_connections import least_connection
+import stats
 
 # Bind load balancer port
 loadBalancer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -22,6 +23,8 @@ print(f"Load balancer listening on {config.LB_HOST}:{config.LB_PORT}")
 
 # Start health checking daemon
 health.start_health_check()
+#Start observability metric daemon
+stats.start_stats_server()
 
 # Background connection acceptance thread
 def accept_connections():
@@ -51,25 +54,6 @@ while True:
             lc = least_connection()
             server_routing = strategy(lc)
             server_routing.get_server(client)
-            # if config.count < config.quantum and config.servers[config.index]["status"] == "up":
-            #     config.count += 1
-            # else:
-            #     curr_index = config.index
-            #     config.index += 1
-            #     config.index %= len(config.servers)
-                
-            #     i = 0
-            #     while config.servers[config.index]["status"] == "down" and i != len(config.servers):
-            #         config.index += 1
-            #         config.index %= len(config.servers)
-            #         i += 1
-                    
-            #     if curr_index != config.index:
-            #         config.count = 1
-                    
-            #     if config.servers[config.index]["status"] == "down":
-            #         client.close()
-            #         raise RuntimeError("All backend servers are down!")
                     
         t1 = threading.Thread(
             target=handler.handleClient,
