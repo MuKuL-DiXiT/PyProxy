@@ -97,3 +97,7 @@ active_env/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Environment variables
+.env
+

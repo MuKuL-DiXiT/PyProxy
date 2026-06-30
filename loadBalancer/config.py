@@ -1,6 +1,11 @@
 import os
 import threading
 import queue
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 
 LB_HOST = os.getenv("LB_HOST", "localhost")
 LB_PORT = int(os.getenv("LB_PORT", "3000"))
