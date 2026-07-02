@@ -1,0 +1,19 @@
+LB_HOST: localhost
+LB_PORT: 3000
+LB_MODE: http
+backlog: 10
+strategy: least_connections
+quantum: 2
+servers:
+  - host: localhost
+    port: 8000
+    health_url: null
+  - host: localhost
+    port: 8001
+    health_url: null
+  - host: localhost
+    port: 8002
+    health_url: null
+  - host: localhost
+    port: 8003
+    health_url: null
