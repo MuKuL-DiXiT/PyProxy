@@ -1,7 +1,6 @@
 FROM python:3.11-slim
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-EXPOSE 3000
-CMD ["python", "-u", "loadBalancer/loadbalancer.py"]
+RUN pip install --no-cache-dir .
+EXPOSE 3000 9090
+CMD ["pyproxy", "--config", "config.yaml"]

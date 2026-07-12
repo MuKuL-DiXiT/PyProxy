@@ -1,6 +1,5 @@
-import config
-from routing import routing
-import config
+from loadbalancer import config
+from loadbalancer.routing import routing
 class least_connection(routing):
     def get_server(self, client):
         min_connections = float("inf")

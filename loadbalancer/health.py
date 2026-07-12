@@ -2,7 +2,7 @@ import socket
 import time
 import urllib.request
 import threading
-import config
+from loadbalancer import config
 
 def http_get(server):
     """Perform an HTTP GET request to check the server's health status."""

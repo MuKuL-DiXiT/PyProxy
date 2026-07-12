@@ -8,14 +8,14 @@ This document details the testing procedures, verification scenarios, and captur
 
 The load balancer has been divided into the following dedicated modules:
 
-*   **[`config.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/config.py)**: Manages configuration constants, shared locks, FIFO queue, and targets pool. Added support for environment variables override (`LB_PORT`, `LB_SERVERS`, `LB_QUANTUM`, etc.).
-*   **[`health.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/health.py)**: Implements the background daemon monitoring system utilizing HTTP or raw TCP connection checks.
-*   **[`handler.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/handler.py)**: Coordinates client-server routing, bidirectional connection threads, failover/retry management (including payload buffering and replay), and safe connection count updates.
-*   **[`loadbalancer.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/loadbalancer.py)**: The entrypoint execution script coordinating initialization and client dispatch loops.
-*   **[`strategy.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/strategy.py)**: Implements the strategy pattern interface.
-*   **[`routing.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/routing.py)**: Abstract base class for routing algorithms.
-*   **[`round_robin.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/round_robin.py)**: Class implementing the Round-Robin routing algorithm.
-*   **[`least_connections.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/least_connections.py)**: Class implementing the Least Connections routing algorithm.
+*   **[`config.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadbalancer/config.py)**: Manages configuration constants, shared locks, FIFO queue, and targets pool. Added support for environment variables override (`LB_PORT`, `LB_SERVERS`, `LB_QUANTUM`, etc.).
+*   **[`health.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadbalancer/health.py)**: Implements the background daemon monitoring system utilizing HTTP or raw TCP connection checks.
+*   **[`handler.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadbalancer/handler.py)**: Coordinates client-server routing, bidirectional connection threads, failover/retry management (including payload buffering and replay), and safe connection count updates.
+*   **[`loadbalancer.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadbalancer/loadbalancer.py)**: The entrypoint execution script coordinating initialization and client dispatch loops.
+*   **[`strategy.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadbalancer/strategy.py)**: Implements the strategy pattern interface.
+*   **[`routing.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadbalancer/routing.py)**: Abstract base class for routing algorithms.
+*   **[`round_robin.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadbalancer/round_robin.py)**: Class implementing the Round-Robin routing algorithm.
+*   **[`least_connections.py`](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadbalancer/least_connections.py)**: Class implementing the Least Connections routing algorithm.
 
 ---
 

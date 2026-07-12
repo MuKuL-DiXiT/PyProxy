@@ -1,5 +1,5 @@
-from routing import routing
-import config
+from loadbalancer.routing import routing
+from loadbalancer import config
 class round_robin(routing):
     def get_server(self, client):
         if config.count < config.quantum and config.servers[config.index]["status"] == "up":

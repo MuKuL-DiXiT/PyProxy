@@ -1,4 +1,4 @@
-import config
+from loadbalancer import config
 import json
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler

@@ -1,13 +1,13 @@
 import socket
 import threading
 import errno
-import config
+from loadbalancer import config
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from http.client import HTTPConnection
-from round_robin import round_robin
-from least_connections import least_connection
-from strategy import strategy
+from loadbalancer.round_robin import round_robin
+from loadbalancer.least_connections import least_connection
+from loadbalancer.strategy import strategy
 
 def handleClient(client, connector, index, request_buffer):
 

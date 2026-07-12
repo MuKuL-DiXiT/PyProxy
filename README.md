@@ -14,7 +14,7 @@ loadBalancerProject/
 ├── config.yaml              # Core configuration file for backend servers and load balancer
 ├── Dockerfile               # Slim Dockerfile optimized for multi-architecture deployments
 ├── requirements.txt         # Project dependencies (python-dotenv, PyYAML)
-├── loadBalancer/            # Load Balancer Component
+├── loadbalancer/            # Load Balancer Component
 │   ├── config.py            # Configuration loader, validator, and shared state manager
 │   ├── handler.py           # Layer 4/Layer 7 forwarding & mid-flight failover handler
 │   ├── health.py            # Background target health checking daemon (HTTP / raw TCP)
@@ -71,27 +71,27 @@ The Load Balancer routes traffic to configured backend servers and can operate a
 ### Core Architecture & Features
 
 #### A. Dual-Mode Traffic Handling (Layer 4 vs. Layer 7)
-*   **Layer 4 (TCP Mode)**: Configured via `LB_MODE: tcp`. It accepts raw TCP sockets, queues connections in a thread-safe FIFO pipeline ([config.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/config.py)), and routes payload bidirectionally using low-level socket forwarding.
+*   **Layer 4 (TCP Mode)**: Configured via `LB_MODE: tcp`. It accepts raw TCP sockets, queues connections in a thread-safe FIFO pipeline ([config.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadbalancer/config.py)), and routes payload bidirectionally using low-level socket forwarding.
 *   **Layer 7 (HTTP Mode)**: Configured via `LB_MODE: http`. It spins up an HTTP proxy engine that strips hop-by-hop headers (e.g., `Connection`, `Keep-Alive`, `Transfer-Encoding`), appends upstream geolocation headers (`X-Forwarded-For`, `X-Forwarded-Host`), forwards requests, and streams responses back to clients.
 
 #### B. Load Balancing Algorithms (Strategy Pattern)
-*   [least_connections.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/least_connections.py): Dynamically selects the server with the lowest count of active client connections.
-*   [round_robin.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/round_robin.py): Rotates targets sequentially according to a configured quantum (number of requests dispatched to a backend before advancing to the next).
+*   [least_connections.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadbalancer/least_connections.py): Dynamically selects the server with the lowest count of active client connections.
+*   [round_robin.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadbalancer/round_robin.py): Rotates targets sequentially according to a configured quantum (number of requests dispatched to a backend before advancing to the next).
 
 #### C. Mid-Flight Request Failover & Recovery
 If a backend server terminates abruptly (returns `TCP RST` or throws a socket exception) during a client connection:
-1.  [handler.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/handler.py) catches the exception (e.g., `ECONNRESET`, `EPIPE`, `ETIMEDOUT`).
+1.  [handler.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadbalancer/handler.py) catches the exception (e.g., `ECONNRESET`, `EPIPE`, `ETIMEDOUT`).
 2.  The broken backend server's status is atomically flagged as `"down"`.
 3.  The client's socket and all buffered request payload are re-queued back into the FIFO dispatch queue.
 4.  The dispatcher retrieves the client socket, selects a healthy backup backend, establishes a connection, and replays the buffered payload.
 5.  This failover is **100% transparent** to the client.
 
 #### D. Health Checker Daemon
-*   [health.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/health.py) runs as a background daemon thread checking target health every 10 seconds.
-*   If `health_url` is specified, it performs an HTTP GET request (marking status `up` on HTTP 200). If omitted, it falls back to a raw TCP handshake.
+*   [health.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadbalancer/health.py) runs as a background daemon thread checking target health every 10 seconds.
+*   If `health_url` is specified, it performs an HTTP GET request (marking status `up` if HTTP 200). If omitted, it falls back to a raw TCP handshake.
 
 #### E. Observability & Telemetry API
-*   [stats.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadBalancer/stats.py) runs a separate HTTP server on port `9090` exposing a JSON endpoint.
+*   [stats.py](file:///Users/mukuldixit/dev/projects/loadBalancerProject/loadbalancer/stats.py) runs a separate HTTP server on port `9090` exposing a JSON endpoint.
 *   Querying `GET http://localhost:9090/` returns live metrics for all backends:
     ```json
     {
@@ -143,33 +143,38 @@ LB_MODE=http
 
 ---
 
-## Local Execution Guide
+## CLI Installation & Execution Guide
 
-To run the load balancer environment locally:
+You can install this project as a package and use the CLI commands directly.
 
-### Step 1: Install Dependencies
+### Step 1: Install the Package
+To install the package in editable mode for local development:
 ```bash
-pip install -r requirements.txt
+pip install -e .
+```
+Or to install the package normally:
+```bash
+pip install .
 ```
 
 ### Step 2: Spin Up Mock Backend Servers
-Start mock backends in separate terminal tabs to simulate load:
+Start mock backends to simulate load using the `pyproxy-server` CLI command:
 ```bash
 # Terminal 1: Spin up Server 1 on Port 8000
-python loadBalancer/server.py 8000
+pyproxy-server 8000
 
 # Terminal 2: Spin up Server 2 on Port 8001
-python loadBalancer/server.py 8001
+pyproxy-server 8001
 
 # Terminal 3: Spin up Server 3 on Port 8002
-python loadBalancer/server.py 8002
+pyproxy-server 8002
 ```
 
 ### Step 3: Run the Load Balancer
-Start the load balancer by supplying the configuration file via the `--config` argument:
+Start the load balancer using the `pyproxy` CLI command, supplying the configuration file via the `--config` argument:
 ```bash
 # Terminal 4: Start Load Balancer
-python loadBalancer/loadbalancer.py --config config.yaml
+pyproxy --config config.yaml
 ```
 
 ### Step 4: Access Telemetry & Send Requests
@@ -297,7 +302,7 @@ docker run -d \
   -p 9090:9090 \
   -v $(pwd)/config.yaml:/app/config.yaml \
   your-dockerhub-username/load-balancer:latest \
-  python -u loadBalancer/loadbalancer.py --config /app/config.yaml
+  pyproxy --config /app/config.yaml
 ```
 
 ### Step 5: Verify Deployment
